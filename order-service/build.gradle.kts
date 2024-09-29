@@ -14,14 +14,18 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+testing {
+
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
     implementation(libs.kotlin.serialization.json)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.netty)
+    implementation(libs.bundles.ktor)
+
     implementation(libs.logback.classic)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
