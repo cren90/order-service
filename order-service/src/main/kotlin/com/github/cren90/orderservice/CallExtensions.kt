@@ -11,6 +11,7 @@ suspend inline fun <reified T : Any> RoutingCall.sendResultResponse(
     when (result) {
         is Result.RequestError -> respondText(status = HttpStatusCode.BadRequest) { result.message }
         is Result.ServerError -> respondText(status = HttpStatusCode.InternalServerError) { result.message }
+        is Result.NotFoundError -> respondText(status = HttpStatusCode.NotFound) { result.message }
         is Result.Success -> respond(status = successStatusCode, message = result.value)
     }
 }

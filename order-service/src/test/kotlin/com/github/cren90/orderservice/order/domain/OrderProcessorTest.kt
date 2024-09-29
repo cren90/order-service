@@ -9,6 +9,8 @@ import com.github.cren90.orderservice.offer.BuyGetOffer
 import com.github.cren90.orderservice.offer.OfferStrategy
 import com.github.cren90.orderservice.offer.repository.OfferRepository
 import com.github.cren90.orderservice.order.dto.response.OrderResponse
+import com.github.cren90.orderservice.order.repository.InMemoryOrderRepository
+import com.github.cren90.orderservice.order.repository.OrderRepository
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -26,9 +28,17 @@ class OrderProcessorTest {
         )
     }
 
+    private val noopOrderRepo = object : OrderRepository {
+        override fun saveOrder(orderResponse: OrderResponse) {}
+
+        override fun getOrder(id: String): OrderResponse? = null
+
+        override fun getAllOrders(): List<OrderResponse> = emptyList()
+    }
+
     @Test
     fun testOrderWithDuplicateItems() {
-        val orderProcessor = OrderProcessor(emptyOfferRepo)
+        val orderProcessor = OrderProcessor(emptyOfferRepo, noopOrderRepo)
         val items = listOf(
             RequestItem(Item.APPLE, 1),
             RequestItem(Item.ORANGE, 1),
@@ -44,7 +54,7 @@ class OrderProcessorTest {
 
     @Test
     fun testOrderWithNegativeQuantity() {
-        val orderProcessor = OrderProcessor(emptyOfferRepo)
+        val orderProcessor = OrderProcessor(emptyOfferRepo, noopOrderRepo)
         val items = listOf(
             RequestItem(Item.APPLE, -1),
             RequestItem(Item.ORANGE, 1)
@@ -59,7 +69,7 @@ class OrderProcessorTest {
 
     @Test
     fun testValidOrder() {
-        val orderProcessor = OrderProcessor(emptyOfferRepo)
+        val orderProcessor = OrderProcessor(emptyOfferRepo, noopOrderRepo)
         val appleQuantity = 1
         val orangeQuantity = 5
         val items = listOf(
@@ -76,7 +86,7 @@ class OrderProcessorTest {
 
     @Test
     fun testValidOrderWithOffers_NoOfferApplied() {
-        val orderProcessor = OrderProcessor(testOfferRepo)
+        val orderProcessor = OrderProcessor(testOfferRepo, noopOrderRepo)
         val appleQuantity = 1
         val orangeQuantity = 1
 
@@ -96,7 +106,7 @@ class OrderProcessorTest {
 
     @Test
     fun testValidOrderWithOffers_AppleOfferApplied() {
-        val orderProcessor = OrderProcessor(testOfferRepo)
+        val orderProcessor = OrderProcessor(testOfferRepo, noopOrderRepo)
         val appleQuantity = 2
         val orangeQuantity = 1
 
@@ -116,7 +126,7 @@ class OrderProcessorTest {
 
     @Test
     fun testValidOrderWithOffers_OrangeOfferApplied() {
-        val orderProcessor = OrderProcessor(testOfferRepo)
+        val orderProcessor = OrderProcessor(testOfferRepo, noopOrderRepo)
         val appleQuantity = 1
         val orangeQuantity = 3
 
@@ -135,7 +145,7 @@ class OrderProcessorTest {
 
     @Test
     fun testValidOrderWithOffers_AppleAndOrangeOfferApplied() {
-        val orderProcessor = OrderProcessor(testOfferRepo)
+        val orderProcessor = OrderProcessor(testOfferRepo, noopOrderRepo)
         val appleQuantity = 2
         val orangeQuantity = 3
 
@@ -150,6 +160,28 @@ class OrderProcessorTest {
 
         assertIs<Result.Success<OrderResponse>>(result)
         assertEquals(expectedTotal, result.value.totalCents)
+    }
+
+    @Test
+    fun testValidOrderSavesToOrderRepo() {
+        val orderRepo = InMemoryOrderRepository
+        val orderProcessor = OrderProcessor(testOfferRepo, orderRepo)
+
+        val appleQuantity = 2
+        val orangeQuantity = 3
+
+        val items = listOf(
+            RequestItem(Item.APPLE, appleQuantity),
+            RequestItem(Item.ORANGE, orangeQuantity)
+        )
+
+        val result = orderProcessor.processOrder(items)
+
+        assertIs<Result.Success<OrderResponse>>(result)
+
+        val orderFromRepo = orderRepo.getOrder(result.value.orderId)
+        assertEquals(result.value.orderId, orderFromRepo?.orderId)
+
     }
 
 }

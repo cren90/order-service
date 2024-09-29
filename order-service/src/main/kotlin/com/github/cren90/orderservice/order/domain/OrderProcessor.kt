@@ -7,9 +7,13 @@ import com.github.cren90.orderservice.items.dto.request.RequestItem
 import com.github.cren90.orderservice.items.dto.response.ResponseItem
 import com.github.cren90.orderservice.offer.repository.OfferRepository
 import com.github.cren90.orderservice.order.dto.response.OrderResponse
+import com.github.cren90.orderservice.order.repository.OrderRepository
 import java.util.*
 
-class OrderProcessor(val offerRepository: OfferRepository) {
+class OrderProcessor(
+    private val offerRepository: OfferRepository,
+    private val orderRepository: OrderRepository
+) {
     fun processOrder(orderItems: List<RequestItem>): Result<OrderResponse> {
         if (hasDuplicateItems(orderItems)) {
             return Result.RequestError(ERROR_DUPLICATE_ITEM)
@@ -30,7 +34,11 @@ class OrderProcessor(val offerRepository: OfferRepository) {
 
         val total = calculateTotal(subtotal, discountTotal)
 
-        return Result.Success(createOrderResponse(itemTotals, subtotal, discountTotal, total))
+        val order = createOrderResponse(itemTotals, subtotal, discountTotal, total)
+
+        orderRepository.saveOrder(order)
+
+        return Result.Success(order)
     }
 
     private fun hasDuplicateItems(orderItems: List<RequestItem>): Boolean {
