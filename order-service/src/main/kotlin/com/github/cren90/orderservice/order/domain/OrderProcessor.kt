@@ -5,10 +5,11 @@ import com.github.cren90.orderservice.ERROR_NEGATIVE_QUANTITY
 import com.github.cren90.orderservice.Result
 import com.github.cren90.orderservice.items.dto.request.RequestItem
 import com.github.cren90.orderservice.items.dto.response.ResponseItem
+import com.github.cren90.orderservice.offer.repository.OfferRepository
 import com.github.cren90.orderservice.order.dto.response.OrderResponse
 import java.util.*
 
-class OrderProcessor {
+class OrderProcessor(val offerRepository: OfferRepository) {
     fun processOrder(orderItems: List<RequestItem>): Result<OrderResponse> {
         if (hasDuplicateItems(orderItems)) {
             return Result.RequestError(ERROR_DUPLICATE_ITEM)
@@ -23,9 +24,13 @@ class OrderProcessor {
             itemTotals[it] = calculateItemTotal(it)
         }
 
-        val total = calculateTotal(itemTotals.values)
+        val subtotal = calculateSubtotal(itemTotals.values)
 
-        return Result.Success(createOrderResponse(itemTotals, total))
+        val discountTotal = calculateDiscountTotal(orderItems)
+
+        val total = calculateTotal(subtotal, discountTotal)
+
+        return Result.Success(createOrderResponse(itemTotals, subtotal, discountTotal, total))
     }
 
     private fun hasDuplicateItems(orderItems: List<RequestItem>): Boolean {
@@ -41,11 +46,20 @@ class OrderProcessor {
         return item.item.priceCents * item.quantity
     }
 
-    private fun calculateTotal(itemTotals: Collection<Int>): Int {
+    private fun calculateSubtotal(itemTotals: Collection<Int>): Int {
         return itemTotals.sum()
     }
 
-    private fun createOrderResponse(itemTotals: Map<RequestItem, Int>, total: Int): OrderResponse {
+    private fun calculateTotal(subtotal: Int, discountTotal: Int): Int {
+        return subtotal - discountTotal
+    }
+
+    private fun createOrderResponse(
+        itemTotals: Map<RequestItem, Int>,
+        subtotal: Int,
+        discountTotal: Int,
+        total: Int
+    ): OrderResponse {
         return OrderResponse(
             orderId = UUID.randomUUID().toString(),
             orderItems = itemTotals.map { itemTotal ->
@@ -56,7 +70,16 @@ class OrderProcessor {
                     totalCents = itemTotal.value
                 )
             },
+            subtotalCents = subtotal,
+            discountCents = discountTotal,
             totalCents = total
         )
+    }
+
+    private fun calculateDiscountTotal(items: List<RequestItem>): Int {
+        val discounts = offerRepository.getCurrentOffers().map {
+            it.calculateDiscount(items)
+        }
+        return discounts.sum()
     }
 }

@@ -7,5 +7,7 @@ import kotlinx.serialization.Serializable
 data class OrderResponse(
     val orderId: String,
     val orderItems: List<ResponseItem>,
+    val subtotalCents: Int,
+    val discountCents: Int,
     val totalCents: Int
 )

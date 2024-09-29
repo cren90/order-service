@@ -23,9 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.kotlin.serialization.json)
     implementation(libs.bundles.ktor)
-
     implementation(libs.logback.classic)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
